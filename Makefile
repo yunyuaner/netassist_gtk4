@@ -13,6 +13,13 @@ GTK_LIBS   := $(shell $(PKG_CONFIG) --libs gtk4)
 GS_CFLAGS := $(shell $(PKG_CONFIG) --cflags gtksourceview-5 2>/dev/null)
 GS_LIBS   := $(shell $(PKG_CONFIG) --libs gtksourceview-5 2>/dev/null)
 
+# Windows needs ws2_32 for sockets
+ifeq ($(OS),Windows_NT)
+WS2LIB := -lws2_32
+else
+WS2LIB :=
+endif
+
 # If gtksourceview-5 is available, add define and flags
 ifeq ($(strip $(GS_CFLAGS)),)
 	EXTRA_CFLAGS :=
@@ -25,7 +32,8 @@ endif
 SRC := \
   src/main.c \
   src/ui_main.c \
-  src/app_controller.c
+	src/app_controller.c \
+	src/udp_io.c
 
 OBJ := $(SRC:.c=.o)
 TARGET := netassist_gtk4
@@ -33,7 +41,7 @@ TARGET := netassist_gtk4
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS) $(EXTRA_LIBS)
+	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS) $(EXTRA_LIBS) $(WS2LIB)
 
 %.o: %.c
 	$(CC) $(CFLAGS) $(GTK_CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@

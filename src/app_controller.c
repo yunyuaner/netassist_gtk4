@@ -2,9 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <stdarg.h>
-#include <math.h>
+#include "udp_io.h"
 
 struct AppController {
     BackendAPI api;
@@ -12,8 +11,10 @@ struct AppController {
 
     ui_log_append_fn log_append;
     ui_script_state_fn script_state_set;
+    ui_packet_append_fn pkt_append;
 
     NetConfig last_cfg;
+    UdpIo* udp;
 };
 
 static void app_logf(AppController* c, const char* fmt, ...) {
@@ -36,21 +37,23 @@ static void api_apply_config(void* user, const NetConfig* cfg) {
          cfg->target_ip ? cfg->target_ip : "(null)", cfg->target_port,
          cfg->rx_hex ? "HEX" : "ASCII",
          cfg->tx_hex ? "HEX" : "ASCII");
+
+    if (c->udp) {
+        udp_io_apply_config(c->udp, cfg);
+        udp_io_open(c->udp);
+    }
 }
 
 static void api_close(void* user) {
     AppController* c = (AppController*)user;
     app_logf(c, "[NET] close requested");
+    if (c->udp) udp_io_close(c->udp);
 }
 
 static void api_send_manual(void* user, const uint8_t* data, size_t len, int is_hex_mode) {
     AppController* c = (AppController*)user;
-    (void)data;
-    app_logf(c, "[SEND] manual len=%u mode=%s -> %s:%d",
-         (unsigned)len,
-         is_hex_mode ? "HEX" : "ASCII",
-         c->last_cfg.target_ip ? c->last_cfg.target_ip : "127.0.0.1",
-         c->last_cfg.target_port);
+    if (c->udp) udp_io_send(c->udp, data, len, is_hex_mode);
+    else app_logf(c, "[SEND] UDP not initialized");
 }
 
 static void api_script_run(void* user, const char* script_text) {
@@ -110,10 +113,14 @@ AppController* app_controller_new(void) {
     c->last_cfg.rx_hex = 1;
     c->last_cfg.tx_hex = 1;
 
+    c->udp = NULL;
+
     return c;
 }
 
 void app_controller_free(AppController* c) {
+    if (!c) return;
+    if (c->udp) udp_io_free(c->udp);
     free(c);
 }
 
@@ -127,9 +134,16 @@ void* app_controller_user(AppController* c) {
 
 void app_controller_bind_ui(AppController* c, void* ui_user,
                             ui_log_append_fn log_append,
-                            ui_script_state_fn script_state_set) {
+                            ui_script_state_fn script_state_set,
+                            ui_packet_append_fn pkt_append) {
     if (!c) return;
     c->ui_user = ui_user;
     c->log_append = log_append;
     c->script_state_set = script_state_set;
+    c->pkt_append = pkt_append;
+
+    if (!c->udp && log_append) {
+        c->udp = udp_io_new(log_append, ui_user, pkt_append, ui_user);
+        udp_io_apply_config(c->udp, &c->last_cfg);
+    }
 }

@@ -12,7 +12,7 @@ static void on_activate(GtkApplication* app, gpointer user_data) {
     UIMain* ui = ui_main_new(app, api, app_controller_user(ctrl));
 
     // Bind controller -> UI callbacks
-    app_controller_bind_ui(ctrl, (void*)ui, ui_main_log_append, ui_main_set_script_state);
+    app_controller_bind_ui(ctrl, (void*)ui, ui_main_log_append, ui_main_set_script_state, ui_main_packet_append);
 
     // NOTE:
     // - 这里 ctrl/ui 的生命周期示例没有做复杂管理。

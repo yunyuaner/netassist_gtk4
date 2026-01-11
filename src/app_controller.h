@@ -18,10 +18,12 @@ void* app_controller_user(AppController* c);
 // controller -> UI 的回调（UI 在创建时注册）
 typedef void (*ui_log_append_fn)(void* ui_user, const char* line);
 typedef void (*ui_script_state_fn)(void* ui_user, ScriptState st, const char* detail);
+typedef void (*ui_packet_append_fn)(void* ui_user, const uint8_t* data, size_t len);
 
 void app_controller_bind_ui(AppController* c, void* ui_user,
                             ui_log_append_fn log_append,
-                            ui_script_state_fn script_state_set);
+                            ui_script_state_fn script_state_set,
+                            ui_packet_append_fn pkt_append);
 
 #ifdef __cplusplus
 }

@@ -26,6 +26,9 @@ struct UIMain {
     GtkTextView* tv_log;
     GtkTextBuffer* buf_log;
 
+    GtkTextView* tv_pkt;
+    GtkTextBuffer* buf_pkt;
+
     GtkTextView* tv_script;
     GtkTextBuffer* buf_script;
     GtkTextView* tv_script_gutter; /* unused when using GtkSourceView line numbers */
@@ -61,6 +64,30 @@ static void append_text(GtkTextBuffer* b, const char* s) {
     gtk_text_buffer_get_end_iter(b, &end);
     gtk_text_buffer_insert(b, &end, s, -1);
     gtk_text_buffer_insert(b, &end, "\n", -1);
+}
+
+static void append_hexdump(GtkTextBuffer* b, const uint8_t* data, size_t len) {
+    if (!b || !data || len == 0) return;
+    GString* out = g_string_new(NULL);
+    for (size_t i = 0; i < len; i += 16) {
+        g_string_append_printf(out, "%08zx  ", i);
+        for (size_t j = 0; j < 16; ++j) {
+            if (i + j < len) g_string_append_printf(out, "%02x ", data[i + j]);
+            else g_string_append(out, "   ");
+            if (j == 7) g_string_append(out, " ");
+        }
+        g_string_append(out, " | ");
+        size_t ascii_count = (len - i) < 16 ? (len - i) : 16;
+        for (size_t j = 0; j < ascii_count; ++j) {
+            uint8_t c = data[i + j];
+            g_string_append_c(out, (c >= 32 && c <= 126) ? (char)c : '.');
+        }
+        for (size_t j = ascii_count; j < 16; ++j) g_string_append_c(out, ' ');
+        g_string_append(out, " |");
+        g_string_append(out, "\n");
+    }
+    append_text(b, out->str);
+    g_string_free(out, TRUE);
 }
 
 static NetConfig ui_collect_cfg(UIMain* ui) {
@@ -408,21 +435,49 @@ static GtkWidget* build_log_tab(UIMain* ui) {
     gtk_widget_set_margin_bottom(sep, 4);
     gtk_box_append(GTK_BOX(v), sep);
 
+    // system log (compact, ~2-3 lines, scrollable)
     ui->tv_log = GTK_TEXT_VIEW(gtk_text_view_new());
     ui->buf_log = gtk_text_view_get_buffer(ui->tv_log);
     gtk_text_view_set_editable(ui->tv_log, FALSE);
     gtk_text_view_set_monospace(ui->tv_log, TRUE);
 
-    GtkWidget* sc = gtk_scrolled_window_new();
-    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(sc), GTK_WIDGET(ui->tv_log));
-    gtk_widget_set_vexpand(sc, TRUE);
-    gtk_widget_set_margin_start(sc, 8);
-    gtk_widget_set_margin_end(sc, 8);
-    gtk_widget_set_margin_top(sc, 4);
-    gtk_widget_set_margin_bottom(sc, 4);
+    GtkWidget* sc_sys = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(sc_sys), GTK_WIDGET(ui->tv_log));
+    gtk_widget_set_margin_start(sc_sys, 8);
+    gtk_widget_set_margin_end(sc_sys, 8);
+    gtk_widget_set_margin_top(sc_sys, 2);
+    gtk_widget_set_margin_bottom(sc_sys, 6);
     gtk_widget_set_margin_start(GTK_WIDGET(ui->tv_log), 6);
     gtk_widget_set_margin_end(GTK_WIDGET(ui->tv_log), 6);
-    gtk_box_append(GTK_BOX(v), sc);
+    gtk_widget_set_size_request(sc_sys, -1, 64); // about 2-3 lines tall
+    {
+        GtkCssProvider* css = gtk_css_provider_new();
+        const char* css_data = ".sys-log-area { background: #eef2fa; border: 1px solid #c7d1ea; }";
+        gtk_css_provider_load_from_string(css, css_data);
+        GdkDisplay* disp = gdk_display_get_default();
+        if (disp) gtk_style_context_add_provider_for_display(disp, GTK_STYLE_PROVIDER(css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        gtk_widget_add_css_class(sc_sys, "sys-log-area");
+        g_object_unref(css);
+    }
+    gtk_box_append(GTK_BOX(v), sc_sys);
+
+    // packet hexdump area (large, takes most space)
+    ui->tv_pkt = GTK_TEXT_VIEW(gtk_text_view_new());
+    ui->buf_pkt = gtk_text_view_get_buffer(ui->tv_pkt);
+    gtk_text_view_set_editable(ui->tv_pkt, FALSE);
+    gtk_text_view_set_monospace(ui->tv_pkt, TRUE);
+
+    GtkWidget* sc_pkt = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(sc_pkt), GTK_WIDGET(ui->tv_pkt));
+    gtk_widget_set_vexpand(sc_pkt, TRUE);
+    gtk_widget_set_hexpand(sc_pkt, TRUE);
+    gtk_widget_set_margin_start(sc_pkt, 8);
+    gtk_widget_set_margin_end(sc_pkt, 8);
+    gtk_widget_set_margin_top(sc_pkt, 2);
+    gtk_widget_set_margin_bottom(sc_pkt, 4);
+    gtk_widget_set_margin_start(GTK_WIDGET(ui->tv_pkt), 6);
+    gtk_widget_set_margin_end(GTK_WIDGET(ui->tv_pkt), 6);
+    gtk_box_append(GTK_BOX(v), sc_pkt);
 
     return v;
 }
@@ -708,6 +763,12 @@ void ui_main_log_append(void* ui_user, const char* line) {
     UIMain* ui = (UIMain*)ui_user;
     if (!ui || !ui->buf_log || !line) return;
     append_text(ui->buf_log, line);
+}
+
+void ui_main_packet_append(void* ui_user, const uint8_t* data, size_t len) {
+    UIMain* ui = (UIMain*)ui_user;
+    if (!ui || !ui->buf_pkt || !data || len == 0) return;
+    append_hexdump(ui->buf_pkt, data, len);
 }
 
 void ui_main_set_script_state(void* ui_user, ScriptState st, const char* detail) {
