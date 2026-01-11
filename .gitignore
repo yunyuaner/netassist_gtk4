@@ -1,0 +1,29 @@
+# Build outputs
+/netassist_gtk4
+/netassist_gtk4.exe
+*.exe
+*.dll
+*.dll.a
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+*.o
+*.obj
+*.lo
+*.la
+*.lai
+*.gch
+
+# Logs and generated files
+*.log
+
+# Editor/OS files
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
