@@ -11,7 +11,7 @@ struct UIMain {
     const BackendAPI* api;
     void* api_user;
 
-    // å·¦ä¾§é…ç½®æ§ä»¶ï¼ˆåªä¿ç•™å…³é”®å‡ ä¸ªï¼‰
+    // ×ó²àÅäÖÃ¿Ø¼ş£¨Ö»±£Áô¹Ø¼ü¼¸¸ö£©
     GtkDropDown* dd_proto;
     GtkEntry*    ent_local_ip;
     GtkSpinButton* sp_local_port;
@@ -22,7 +22,7 @@ struct UIMain {
     GtkToggleButton* tg_rx_hex;
     GtkToggleButton* tg_tx_hex;
 
-    // å³ä¾§æ—¥å¿—/è„šæœ¬
+    // ÓÒ²àÈÕÖ¾/½Å±¾
     GtkTextView* tv_log;
     GtkTextBuffer* buf_log;
 
@@ -40,10 +40,10 @@ struct UIMain {
     GtkTextTag* tag_pp;
     GtkTextTag* tag_op;
 
-    // è„šæœ¬è¾“å‡ºï¼ˆå¯æŠ˜å å…ˆçœç•¥ï¼Œå…ˆç”¨åŒä¸€æ—¥å¿—ï¼‰
+    // ½Å±¾Êä³ö£¨¿ÉÕÛµşÏÈÊ¡ÂÔ£¬ÏÈÓÃÍ¬Ò»ÈÕÖ¾£©
     GtkLabel* lb_script_state;
 
-    // åº•éƒ¨å‘é€åŒº
+    // µ×²¿·¢ËÍÇø
     GtkTextView* tv_send;
     GtkTextBuffer* buf_send;
     GtkButton* btn_send;
@@ -51,7 +51,7 @@ struct UIMain {
     GtkToggleButton* tg_send_mode_manual;
     GtkToggleButton* tg_send_mode_script;
 
-    // è„šæœ¬æ§åˆ¶
+    // ½Å±¾¿ØÖÆ
     GtkButton* btn_run;
     GtkButton* btn_pause;
     GtkButton* btn_stop;
@@ -125,12 +125,12 @@ static void on_send_clicked(GtkButton* b, gpointer user_data) {
     UIMain* ui = (UIMain*)user_data;
     if (!ui->api || !ui->api->on_send_manual) return;
 
-    // å–å‘é€åŒºæ–‡æœ¬ï¼ˆæ¼”ç¤ºï¼šç›´æ¥æŒ‰ ASCII bytes å‘ï¼›HEX æ¨¡å¼åç»­ä½ æ¥å…¥è§£æï¼‰
+    // È¡·¢ËÍÇøÎÄ±¾£¨ÑİÊ¾£ºÖ±½Ó°´ ASCII bytes ·¢£»HEX Ä£Ê½ºóĞøÄã½ÓÈë½âÎö£©
     GtkTextIter start, end;
     gtk_text_buffer_get_bounds(ui->buf_send, &start, &end);
     char* txt = gtk_text_buffer_get_text(ui->buf_send, &start, &end, FALSE);
 
-    // demoï¼šæŠŠæ–‡æœ¬å½“ bytes å‘é€
+    // demo£º°ÑÎÄ±¾µ± bytes ·¢ËÍ
     const uint8_t* data = (const uint8_t*)txt;
     size_t len = txt ? strlen(txt) : 0;
 

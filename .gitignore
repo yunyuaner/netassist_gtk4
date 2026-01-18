@@ -19,6 +19,8 @@
 # Logs and generated files
 *.log
 
+*.d
+
 # Editor/OS files
 *~
 *.swp

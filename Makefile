@@ -2,10 +2,6 @@ CC ?= gcc
 CFLAGS ?= -O2 -Wall -Wextra -std=c11
 PKG_CONFIG ?= pkg-config
 
-CC ?= gcc
-CFLAGS ?= -O2 -Wall -Wextra -std=c11
-PKG_CONFIG ?= pkg-config
-
 GTK_CFLAGS := $(shell $(PKG_CONFIG) --cflags gtk4)
 GTK_LIBS   := $(shell $(PKG_CONFIG) --libs gtk4)
 
@@ -35,7 +31,15 @@ SRC := \
 	src/app_controller.c \
 	src/udp_io.c
 
-OBJ := $(SRC:.c=.o)
+# Build directory for object and dependency files
+BUILD_DIR := build
+
+# Objects go into $(BUILD_DIR)
+OBJ := $(patsubst src/%.c,$(BUILD_DIR)/%.o,$(SRC))
+
+# Dependency files (.d) also live in $(BUILD_DIR)
+DEPS := $(patsubst src/%.c,$(BUILD_DIR)/%.d,$(SRC))
+
 TARGET := netassist_gtk4
 
 all: $(TARGET)
@@ -43,11 +47,22 @@ all: $(TARGET)
 $(TARGET): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^ $(GTK_LIBS) $(EXTRA_LIBS) $(WS2LIB)
 
-%.o: %.c
-	$(CC) $(CFLAGS) $(GTK_CFLAGS) $(EXTRA_CFLAGS) -c $< -o $@
+
+# Ensure build directory exists before compiling
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Compile sources into $(BUILD_DIR) and generate dependency files there
+$(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) $(GTK_CFLAGS) $(EXTRA_CFLAGS) -MMD -MP -MF $(BUILD_DIR)/$*.d -c $< -o $@
 
 clean:
-	rm -f $(OBJ) $(TARGET) $(TARGET).exe
+	rm -rf $(BUILD_DIR) $(TARGET) $(TARGET).exe
+
+# Include generated dependency files if present
+-include $(DEPS)
+
+.PHONY: all clean
 
 run: $(TARGET)
 	./$(TARGET)
